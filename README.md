@@ -5,9 +5,9 @@ Dynamic DAG generator allows you to create DAG's dynamically on Airflow using Py
 
 ## Pre-requisites:
 Below are the pre-requisites for using this application:
-1. Airflow instance - An airflow instance must be up and running.Use the installation steps mentioned below if not installed.
+ 
+a. **Airflow instance** - An airflow instance must be up and running.Use the installation steps mentioned below if not installed.
 
-#### Airflow installation using docker 
 To install airflow using docker on any server use the below steps:
 1. Run the below curl command to get the docker-compose file for airflow.
 
@@ -24,13 +24,13 @@ docker-compose up -d
 
 ![img.png](images/img.png)
 
-2. Python - python and pip must be installed on the machine where the airflow instance is running.Use the below command if not installed.
+b. **Python** - python and pip must be installed on the machine where the airflow instance is running.Use the below command if not installed.
 
 ```commandline
 sudo apt-update && sudo apt-get install python3.8 && sudo apt install python3-pip
 ```
 
-3. Python Libraries -Jinja2 library must be installed.Use the below command if not installed.
+c. **Python Libraries** -Jinja2 library must be installed.Use the below command if not installed.
 
 ```commandline
  pip install jinja2
@@ -77,7 +77,7 @@ Optional input:
 
 1. Execute the below python command to delete a DAG
 ```commandline
-python3 src/dynamic_dag_generator.py --action delete --dag-name generated_dag --dag-id 220608 
+python3 src/dynamic_dag_generator.py --action delete --dag-name generated_dag --dag-id 220608 --dag-path /home/docker/dags
 ```
 NOTE: Below are the inputs for deleting the DAG
 

@@ -25,9 +25,9 @@ def deleteDag(dag_name,dag_path, dag_id):
     if os.path.exists(f"{dag_path}/{dag_name}_{dag_id}.py"):
         os.remove(f"{dag_path}/{dag_name}_{dag_id}.py")
     if res.status_code == 204:
-        logger.info(f"[+]Deleted DAG {dag_name}_{dag_id}.py")
+        logger.info(f"[+] Deleted DAG {dag_name}_{dag_id}.py successfully")
     else:
-        logger.error(f"[-]Failed to delete DAG {dag_name}_{dag_id}.py")
+        logger.error(f"[-] Failed to delete DAG {dag_name}_{dag_id}.py")
 
 
 def getLogger(name):
