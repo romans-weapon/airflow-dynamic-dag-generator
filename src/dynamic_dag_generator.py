@@ -19,11 +19,11 @@ def createDag(dag_name, dag_id, dag_path, schedule_interval, catchup=False):
         logger.error(f"[-] Failed to create DAG having id: {dag_name}_{dag_id} ")
 
 
-def deleteDag(dag_name, dag_id):
+def deleteDag(dag_name,dag_path, dag_id):
     res = requests.delete(f'http://localhost:8080/api/v1/dags/{dag_name}_{dag_id}', auth=("airflow", "airflow"),
                           verify=True)
-    if os.path.exists(f"dags/{dag_name}_{dag_id}.py"):
-        os.remove(f"dags/{dag_name}_{dag_id}.py")
+    if os.path.exists(f"{dag_path}/{dag_name}_{dag_id}.py"):
+        os.remove(f"{dag_path}/{dag_name}_{dag_id}.py")
     if res.status_code == 204:
         logger.info(f"[+]Deleted DAG {dag_name}_{dag_id}.py")
     else:
@@ -61,4 +61,4 @@ if __name__ == "__main__":
     ##  updateDag(args.dag_name, args.dag_id, args.payload)
     elif args.action == 'delete':
         logger.info(f"[+] Provided action: {args.action}")
-        deleteDag(args.dag_name, args.dag_id)
+        deleteDag(args.dag_name,args.dag_path, args.dag_id)
