@@ -1,3 +1,5 @@
+import json
+
 from jinja2 import Environment, FileSystemLoader
 import argparse
 import os
@@ -9,21 +11,42 @@ env = Environment(loader=FileSystemLoader(file_dir))
 template = env.get_template("resources/dag_template.jinja2")
 
 
-def createDag(dag_name, dag_id, dag_path, schedule_interval, catchup=False):
+def createDag(dag_payload, airflow_profile):
+    dag_name = dag_payload['dag_name']
+    dag_id = dag_payload['dag_id']
+    connection_details = dag_payload['connection_details']
     try:
-        with open(f"{dag_path}/{dag_name}_{dag_id}.py", "w") as f:
-            f.write(
-                template.render(dag_id=dag_id, dag_name=dag_name, schedule_interval=schedule_interval, catchup=catchup))
+        # create a DAG connection before creating the DAG
+        if dag_payload.has_key("connection"):
+            createDAGConnection(connection_details, airflow_profile)
+        with open(f"{airflow_profile['dag_path']}/{dag_name}_{dag_id}.py", "w") as f:
+            f.write(template.render(payload=payload))
             logger.info(f"[+] A new DAG with id: {dag_name}_{dag_id} created successfully")
     except:
         logger.error(f"[-] Failed to create DAG having id: {dag_name}_{dag_id} ")
 
 
-def deleteDag(dag_name,dag_path, dag_id):
-    res = requests.delete(f'http://localhost:8080/api/v1/dags/{dag_name}_{dag_id}', auth=("airflow", "airflow"),
-                          verify=True)
-    if os.path.exists(f"{dag_path}/{dag_name}_{dag_id}.py"):
-        os.remove(f"{dag_path}/{dag_name}_{dag_id}.py")
+def createDAGConnection(dag_connection_payload, resources):
+    dag_conn_profile = json.loads(dag_connection_payload)
+    res = requests.post(
+        f"http://{resources['airflow_instance_host']}:{resources['airflow_instance_port']}/api/v1/connections/",
+        auth=(resources['airflow_instance_user'], resources['airflow_instance_pass']), data=dag_conn_profile,
+        verify=True)
+    if res.status_code == 200:
+        logger.info(f"[+] Created DAG connection with name: {dag_conn_profile['connection_id']} successfully")
+    else:
+        logger.info(f"[+] Failed to create connection: {dag_conn_profile['connection_id']} ")
+
+
+def deleteDag(dag_payload, resources):
+    dag_name = dag_payload['dag_name']
+    dag_id = dag_payload['dag_id']
+    res = requests.delete(
+        f"http://{resources['airflow_instance_host']}:{resources['airflow_instance_port']}/api/v1/connections/",
+        auth=(resources['airflow_instance_user'], resources['airflow_instance_pass']),
+        verify=True)
+    if os.path.exists(f"{resources['dag_path']}/{dag_name}_{dag_id}.py"):
+        os.remove(f"{resources['dag_path']}/{dag_name}_{dag_id}.py")
     if res.status_code == 204:
         logger.info(f"[+] Deleted DAG {dag_name}_{dag_id}.py successfully")
     else:
@@ -44,21 +67,20 @@ def getLogger(name):
 if __name__ == "__main__":
     logger = getLogger("Dynamic Dag generator")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--action', type=str, required=True)
-    parser.add_argument('--dag-name', type=str, required=True)
-    parser.add_argument('--dag-id', type=str, required=True)
-    parser.add_argument('--dag-path', type=str, required=False, default="/dags")
-    parser.add_argument('--schedule-interval', type=str, required=False, default='@Daily')
-    parser.add_argument('--catchup', type=str, required=False, default=False)
-    parser.add_argument('--payload', type=str, required=False, default='{}')
+    parser.add_argument('--resources-path', type=str, required=True)
+    parser.add_argument('--payload', type=str, required=True)
     args = parser.parse_args()
 
-    if args.action == 'create':
-        logger.info(f"[+] Provided action: {args.action}")
-        createDag(args.dag_name, args.dag_id, args.dag_path, args.schedule_interval, args.catchup)
-    elif args.action == 'update':
-        pass
-    ##  updateDag(args.dag_name, args.dag_id, args.payload)
-    elif args.action == 'delete':
-        logger.info(f"[+] Provided action: {args.action}")
-        deleteDag(args.dag_name,args.dag_path, args.dag_id)
+    with open('resources/dag_generator.json') as json_file:
+        airflow_conn_profile = json.load(json_file)
+
+    if args.payload is not None:
+        payload = json.loads(args.payload)
+        if payload['action'] == 'create':
+            logger.info(f"[+] Provided action: Create")
+            createDag(payload, airflow_conn_profile)
+        elif payload['action'] == 'delete':
+            logger.info(f"[+] Provided action: Delete")
+            deleteDag(payload, airflow_conn_profile)
+    else:
+        raise Exception("payload is not provided")

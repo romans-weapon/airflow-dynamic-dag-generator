@@ -7,7 +7,7 @@ import json
 default_args= {
  'owner': 'Airflow POC',
  'depends_on_past': True,
- 'email': '',
+ 'email': '{{ payload.email }}',
  'start_date': datetime(2020,1,1)
 }
 
@@ -15,10 +15,10 @@ def my_function(x):
     return x + " is a must have tool for Data Engineers."
 
 dag = DAG(
-    dag_id="{{ dag_name }}_{{ dag_id }}",
+    dag_id="{{ payload.dag_name }}_{{ payload.dag_id }}",
     default_args=default_args,
-    schedule_interval="{{ schedule_interval }}",
-    catchup={{catchup or False}})
+    schedule_interval="{{ payload.schedule_interval }}",
+    catchup={{payload.catchup or False}})
 
 t1 = PythonOperator(
     task_id='python_task',
@@ -29,10 +29,11 @@ t1 = PythonOperator(
 
 t2  = SimpleHttpOperator(
     task_id='get_response',
-    method='GET',
-    http_conn_id='random_http_conn',
+    method='POST',
+    http_conn_id='{{ payload.connection_id }}',
     endpoint='/api/app/random_app',
     headers={"Content-Type": "application/json"},
+    data= {"key1":"val1","key2":"val2"},
     dag=dag
  )
 

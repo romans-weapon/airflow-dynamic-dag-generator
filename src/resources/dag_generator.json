@@ -1,0 +1,7 @@
+{
+  "airflow_instance_host": "192.168.0.106",
+  "airflow_instance_port": "8080",
+  "airflow_instance_user": "airflow",
+  "airflow_instance_pass": "airflow",
+  "dags_folder_path": "/home/docker/dags"
+}
