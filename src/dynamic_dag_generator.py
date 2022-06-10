@@ -5,6 +5,7 @@ import argparse
 import os
 import requests
 import logging
+import traceback
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 env = Environment(loader=FileSystemLoader(file_dir))
@@ -14,43 +15,49 @@ template = env.get_template("resources/dag_template.jinja2")
 def createDag(dag_payload, airflow_profile):
     dag_name = dag_payload['dag_name']
     dag_id = dag_payload['dag_id']
-    connection_details = dag_payload['connection_details']
+    dags_path = dag_payload['dags_folder_path']
     try:
-        # create a DAG connection before creating the DAG
-        if dag_payload.has_key("connection"):
+        # create a DAG connection before creating the DAG if not exists
+        if "connection" in dag_payload:
+            connection_details = dag_payload['connection']
             createDAGConnection(connection_details, airflow_profile)
-        with open(f"{airflow_profile['dag_path']}/{dag_name}_{dag_id}.py", "w") as f:
-            f.write(template.render(payload=payload))
+        with open(f"{dags_path}/{dag_name}_{dag_id}.py", "w") as f:
+            f.write(template.render(payload=dag_payload))
             logger.info(f"[+] A new DAG with id: {dag_name}_{dag_id} created successfully")
     except:
+        traceback.print_exc()
         logger.error(f"[-] Failed to create DAG having id: {dag_name}_{dag_id} ")
 
 
 def createDAGConnection(dag_connection_payload, resources):
-    dag_conn_profile = json.loads(dag_connection_payload)
+    dag_conn_profile = json.dumps(dag_connection_payload)
     res = requests.post(
-        f"http://{resources['airflow_instance_host']}:{resources['airflow_instance_port']}/api/v1/connections/",
+        f"http://{resources['airflow_instance_host']}:{resources['airflow_instance_port']}/api/v1/connections",
         auth=(resources['airflow_instance_user'], resources['airflow_instance_pass']), data=dag_conn_profile,
         verify=True)
     if res.status_code == 200:
-        logger.info(f"[+] Created DAG connection with name: {dag_conn_profile['connection_id']} successfully")
+        logger.info(
+            f"[+] Created DAG connection with name: {dag_connection_payload['connection']['connection_id']} successfully")
     else:
-        logger.info(f"[+] Failed to create connection: {dag_conn_profile['connection_id']} ")
+        logger.error(
+            f"[-] Failed to create connection: {dag_connection_payload['connection_id']['connection_id']}. Error details: {res.text}")
+        raise Exception(traceback.print_exc())
 
 
 def deleteDag(dag_payload, resources):
     dag_name = dag_payload['dag_name']
     dag_id = dag_payload['dag_id']
+    dags_path = dag_payload['dags_folder_path']
     res = requests.delete(
         f"http://{resources['airflow_instance_host']}:{resources['airflow_instance_port']}/api/v1/connections/",
         auth=(resources['airflow_instance_user'], resources['airflow_instance_pass']),
         verify=True)
-    if os.path.exists(f"{resources['dag_path']}/{dag_name}_{dag_id}.py"):
-        os.remove(f"{resources['dag_path']}/{dag_name}_{dag_id}.py")
+    if os.path.exists(f"{dags_path}/{dag_name}_{dag_id}.py"):
+        os.remove(f"{dags_path}/{dag_name}_{dag_id}.py")
     if res.status_code == 204:
         logger.info(f"[+] Deleted DAG {dag_name}_{dag_id}.py successfully")
     else:
-        logger.error(f"[-] Failed to delete DAG {dag_name}_{dag_id}.py")
+        logger.error(f"[-] Failed to delete DAG {dag_name}_{dag_id}.py. Error details : {res.text}")
 
 
 def getLogger(name):
